@@ -18,16 +18,13 @@ class ModeloPrevisao:
         if not self.modelo:
             raise ValueError("O modelo não está carregado.")
 
-        # Transforma o dicionário recebido da API em um DataFrame de 1 linha
         df_entrada = pd.DataFrame([dados_entrada])
         
-        # Faz a predição
-        resultado = self.modelo.predict(df_entrada)
+        # O resultado agora é apenas um número
+        resultado = self.modelo.predict(df_entrada)[0]
 
-        # Mapeia a saída do RandomForest para o nosso Schema
         return {
-            "qtd_leitinho_5l": round(resultado, 2)
+            "qtd": round(resultado, 2)
         }
 
-# Instância global para carregar o modelo apenas uma vez quando a API iniciar
 modelo_preditor = ModeloPrevisao()

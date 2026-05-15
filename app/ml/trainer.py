@@ -8,20 +8,20 @@ def treinar_modelo(df_semana):
     valores_entrada = df_semana[[
         "temp_min_semana", "temp_max_semana", "temp_media_semana",
         "umidade_media_semana", "tem_feriado_na_semana",
-        "vendas_leitinho_semana_passada", "vendas_flocos_semana_passada",
-        "vendas_frutao_semana_passada", "mes", "semana_do_ano"
+        "vendas_semana_passada", "mes", "semana_do_ano" # <-- Apenas uma variável de venda passada
     ]]
 
-    valores_saida = df_semana[["qtd"]]
+    valores_saida = df_semana[["qtd"]] # <-- Única saída
 
     entrada_train, entrada_test, saida_train, saida_test = train_test_split(
         valores_entrada, valores_saida, test_size=0.2, shuffle=False
     )
 
     modelo = RandomForestRegressor(n_estimators=500, random_state=42)
-    modelo.fit(entrada_train, saida_train)
+    
+    # O scikit-learn prefere que saídas únicas sejam um array 1D, então usamos o .values.ravel()
+    modelo.fit(entrada_train, saida_train.values.ravel())
 
-    # Salva o modelo na pasta 'models' conforme sua estrutura
     caminho_modelo = os.path.join('models', 'modelo_sorvetao_v1.pkl')
     joblib.dump(modelo, caminho_modelo)
 
@@ -32,10 +32,5 @@ def avaliar_modelo(modelo, entrada_test, saida_test):
     erro_geral = mean_absolute_error(saida_test, previsoes)
     r2_geral = r2_score(saida_test, previsoes)
 
-    print(f"Erro Médio Geral: {erro_geral:.2f}")
-    print(f"R² Geral: {r2_geral:.2f}")
-    
-    erros_individuais = mean_absolute_error(saida_test, previsoes, multioutput='raw_values')
-    r2_individuais = r2_score(saida_test, previsoes, multioutput='raw_values')
-    
-    return erros_individuais, r2_individuais, saida_test.columns
+    # Como agora é só um produto, o erro geral já é o erro do produto
+    return erro_geral, r2_geral

@@ -41,3 +41,27 @@ def sincronizar_feriados(df):
     df['e_feriado'] = df['data'].isin(datas_feriados_oficiais).astype(int)
     print(f"{len(lista_datas_feriados)} feriados mapeados!")
     return df
+
+def remover_outliers(df, coluna):
+    """
+    Remove outliers de um DataFrame usando o método do Intervalo Interquartil (IQR).
+    """
+    # Calcula o primeiro e o terceiro quartil (25% e 75% dos dados)
+    Q1 = df[coluna].quantile(0.25)
+    Q3 = df[coluna].quantile(0.75)
+    
+    # Calcula o IQR
+    IQR = Q3 - Q1
+    
+    # Define os limites de corte
+    limite_inferior = Q1 - 1.5 * IQR
+    limite_superior = Q3 + 1.5 * IQR
+    
+    # Filtra o DataFrame mantendo apenas o que está dentro dos limites saudáveis
+    df_limpo = df[(df[coluna] >= limite_inferior) & (df[coluna] <= limite_superior)].copy()
+    
+    # Print informativo para você saber quantos dados foram jogados fora
+    outliers_removidos = len(df) - len(df_limpo)
+    print(f"Limpeza: {outliers_removidos} outliers removidos da coluna '{coluna}'.")
+    
+    return df_limpo

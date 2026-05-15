@@ -8,15 +8,12 @@ def preparar_features_semanais(df):
         'temp_media': ['min', 'max', 'mean'],
         'umidade_media': 'mean',
         'e_feriado': 'max',
-        'qtd_leitinho_5l': 'sum',
-        'qtd_flocos_1l': 'sum',
-        'qtd_frutao_uva': 'sum'
+        'qtd': 'sum'
     }).reset_index()
 
     df_semana.columns = [
-        'data_fim_semana', 'temp_min_semana', 'temp_max_semana', 'temp_media_semana', 
-        'umidade_media_semana', 'tem_feriado_na_semana', 'qtd_leitinho_5l', 
-        'qtd_flocos_1l', 'qtd_frutao_uva'
+        'data_fim_semana', 'temp_min_semana', 'temp_max_semana', 'temp_media_semana',
+        'umidade_media_semana', 'tem_feriado_na_semana', 'qtd' 
     ]
 
     df_semana['mes'] = df_semana['data_fim_semana'].dt.month
@@ -27,8 +24,8 @@ def preparar_features_semanais(df):
 
     # Lags (Vendas da semana anterior)
     df_semana['temp_media_semana_passada'] = df_semana['temp_media_semana'].shift(1)
-    df_semana['vendas_leitinho_semana_passada'] = df_semana['qtd_leitinho_5l'].shift(1)
-    df_semana['vendas_flocos_semana_passada'] = df_semana['qtd_flocos_1l'].shift(1)
-    df_semana['vendas_frutao_semana_passada'] = df_semana['qtd_frutao_uva'].shift(1)
+    
+    # <-- Apenas um lag de vendas agora
+    df_semana['vendas_semana_passada'] = df_semana['qtd'].shift(1)
 
     return df_semana.dropna()
