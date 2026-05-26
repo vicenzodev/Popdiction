@@ -1,29 +1,35 @@
-from services.data_handler import buscar_caminho_arquivo, limpar_e_formatar_dados, sincronizar_feriados, remover_outliers
-from services.feature_engineering import preparar_features_semanais
-from ml.trainer import treinar_modelo, avaliar_modelo
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from api.endpoints import router as api_router
+import uvicorn
 
-def run():
-    caminho = buscar_caminho_arquivo()
-    if not caminho:
-        print("Nenhum arquivo selecionado.")
-        return
+# Inicializa o aplicativo FastAPI
+app = FastAPI(
+    title="API Previsão de Sorvetes",
+    version="1.0.0",
+    description="API REST para previsão de demanda de vendas (Qtd Única)"
+)
 
-    # <-- Alterado para apenas a coluna qtd
-    colunas = ["qtd"]
-    df = limpar_e_formatar_dados(caminho, colunas)
-    df = remover_outliers(df, "qtd")
-    df = sincronizar_feriados(df)
+# Configuração de CORS (Essencial se a sua plataforma for um site Web/Frontend)
+# Isso permite que outros domínios façam requisições para a sua API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Em produção, troque "*" pelo domínio da sua plataforma
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    df_preparado = preparar_features_semanais(df)
-
-    modelo, x_test, y_test = treinar_modelo(df_preparado)
+app.include_router(api_router, prefix="/api/v1")
     
-    # <-- Avaliação simplificada
-    erro_mae, r2 = avaliar_modelo(modelo, x_test, y_test)
-
-    print("\n--- Desempenho do Modelo (Qtd Geral) ---")
-    print(f"Erro Médio (MAE): {erro_mae:.2f}")
-    print(f"R² Score: {r2:.2f}")
-
+# Inicia o servidor Uvicorn
 if __name__ == "__main__":
-    run()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Uma rota básica apenas para checar se o servidor está online (Health Check)
+@app.get("/")
+def health_check():
+    return {
+        "status": "online",
+        "mensagem": "A API de Previsão de Sorvetes está rodando perfeitamente!"
+    }

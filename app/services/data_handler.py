@@ -1,12 +1,15 @@
-import pandas as pd
-import requests
+import os
+import sqlite3
 import tkinter as tk
 from tkinter import filedialog
+import pandas as pd
+import requests
+from core.config import settings
 
 def buscar_caminho_arquivo():
     root = tk.Tk()
     root.withdraw()
-    return filedialog.askopenfilename(
+    return filedialog.askopenfilenames(
         title="Selecione um arquivo CSV",
         filetypes=(("Arquivo CSV", "*.csv"), ("Todos os arquivos", "*.*"))
     )
@@ -14,12 +17,16 @@ def buscar_caminho_arquivo():
 def limpar_e_formatar_dados(caminho_arquivo, colunas_pedidos):
     df = pd.read_csv(caminho_arquivo, encoding='latin1', sep=',')
     
+    divisor = 1000
+    
     for coluna in colunas_pedidos:
-        df[coluna] = df[coluna].astype(str).str.replace(',', '.', regex=False)
         df[coluna] = pd.to_numeric(df[coluna], errors='coerce')
+        
+        df[coluna] = df[coluna] / divisor
 
     df = df.dropna(subset=colunas_pedidos)
     df['data'] = pd.to_datetime(df['data'])
+    
     return df
 
 def sincronizar_feriados(df):
@@ -65,3 +72,49 @@ def remover_outliers(df, coluna):
     print(f"Limpeza: {outliers_removidos} outliers removidos da coluna '{coluna}'.")
     
     return df_limpo
+
+def importar_csv(caminho_csv):
+
+    conexao = sqlite3.connect(settings.DB_PATH, timeout=10)
+    try:
+        df_banco = pd.read_sql_query("SELECT * FROM historico_vendas", conexao)
+        df_banco['data'] = pd.to_datetime(df_banco['data'])
+    except Exception as e:
+        print("Tabelas 'historico_vendas' não existe ou está vazia. Criando nova tabela. Erro:", e)
+        df_banco = pd.DataFrame()
+        
+    lista_dfs = [df_banco]
+
+    for caminho in caminho_csv:
+        print(f"Processando arquivo: {caminho}")
+        df_novo = pd.read_csv(caminho, encoding='latin1', sep=',')
+        df_novo['data'] = pd.to_datetime(df_novo['data'])
+
+        nome_arquivo = os.path.basename(caminho)
+        nome_produto = os.path.splitext(nome_arquivo)[0].lower()
+
+        df_novo['produto'] = nome_produto
+
+        lista_dfs.append(df_novo)
+    
+    df_final = pd.concat(lista_dfs, ignore_index=True)
+
+    tamanho_antes = len(df_final)
+
+    df_final = df_final.drop_duplicates(subset=['data', 'loja', 'produto'], keep='last')
+
+    duplicatas_removidas = tamanho_antes - len(df_final)
+    if duplicatas_removidas > 0:
+        print(f"Aviso: {duplicatas_removidas} registros com datas repetidas foram ignorados/atualizados.")
+
+    df_final.to_sql('historico_vendas', conexao, if_exists='replace', index=False)
+    conexao.close()
+    print("Importação concluída com sucesso!")
+
+def carregar_dados():
+    conexao = sqlite3.connect(settings.DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM historico_vendas", conexao)
+    conexao.close()
+    if not df.empty and 'data' in df.columns:
+            df['data'] = pd.to_datetime(df['data'])
+    return df

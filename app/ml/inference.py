@@ -1,30 +1,52 @@
+import glob
+import os
 import joblib
 import pandas as pd
-from app.core.config import settings
+from core.config import settings
+from ml.trainer import treinamento_automatico
 
 class ModeloPrevisao:
     def __init__(self):
-        self.modelo = None
-        self.carregar_modelo()
+        self.modelos = {}
+        self.carregar_todos_modelos()
 
-    def carregar_modelo(self):
-        try:
-            self.modelo = joblib.load(settings.MODEL_PATH)
-            print("Modelo carregado com sucesso!")
-        except FileNotFoundError:
-            print(f"Erro: Modelo não encontrado no caminho {settings.MODEL_PATH}")
+    def carregar_todos_modelos(self):
+        self.modelos.clear()
+        caminho_busca = os.path.join(settings.MODELS_DIR, "*.pkl")
+        arquivos_pkl = glob.glob(caminho_busca)
+
+        if not arquivos_pkl:
+            print("Nenhum modelo encontrado. Iniciando treinamento automático :)")
+            sucesso = treinamento_automatico()
+            if sucesso:
+                arquivos_pkl = glob.glob(caminho_busca)
+            else:
+                print("Treinamento automático falhou. Verifique os logs para mais detalhes.")
+            return
+
+        for caminho in arquivos_pkl:
+            nome_arquivo = os.path.basename(caminho)
+            nome_produto = nome_arquivo.replace("modelo_", "").replace(".pkl", "")
+            
+            try:
+                self.modelos[nome_produto] = joblib.load(caminho)
+                print(f"Modelo '{nome_produto}' carregado com sucesso.")
+            except Exception as e:
+                print(f"Erro ao carregar modelo '{nome_produto}': {e}")
 
     def prever(self, dados_entrada: dict) -> dict:
-        if not self.modelo:
-            raise ValueError("O modelo não está carregado.")
+        produto = dados_entrada.pop("produto", "").lower()
 
+        if produto not in self.modelos:
+            produtos_disponiveis = list(self.modelos.keys())
+            raise ValueError(f"Produto '{produto}' não encontrado. Modelos disponíveis: {produtos_disponiveis}")
+
+        modelo_certo = self.modelos[produto]
         df_entrada = pd.DataFrame([dados_entrada])
-        
-        # O resultado agora é apenas um número
-        resultado = self.modelo.predict(df_entrada)[0]
+        resultado = modelo_certo.predict(df_entrada)[0]
 
         return {
-            "qtd": round(resultado, 2)
+            "qtd": round(resultado/100, 2)
         }
 
 modelo_preditor = ModeloPrevisao()

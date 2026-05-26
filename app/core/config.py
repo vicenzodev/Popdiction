@@ -6,6 +6,8 @@ class Settings:
     
     # Caminho base para encontrar o modelo salvo
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    MODEL_PATH: str = os.path.join(BASE_DIR, "ml", "modelo_sorvetao_v1.pkl")
+    MODELS_DIR: str = os.path.join(BASE_DIR, "models")
+
+    DB_PATH: str = os.path.join(BASE_DIR, "dados_processados.db")
 
 settings = Settings()
