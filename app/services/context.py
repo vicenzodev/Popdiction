@@ -21,8 +21,9 @@ def buscar_vendas_passadas(produto:str,data_alvo:datetime) -> float:
     cursor.execute(query, (produto, inicio_str, fim_str))
     resultado = cursor.fetchone()[0]
     conexao.close()
-
-    return float(resultado) if resultado else 0.0
+    
+    # === A CORREÇÃO DOS 3 ZEROS NO RESULTADO ===
+    return (float(resultado) / 1000) if resultado else 0.0
 
 def construir_dados_completos(produto: str, data_str:str) -> dict:
     data_alvo = pd.to_datetime(data_str)

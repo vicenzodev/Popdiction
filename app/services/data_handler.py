@@ -30,7 +30,6 @@ def limpar_e_formatar_dados(caminho_arquivo, colunas_pedidos):
     return df
 
 def sincronizar_feriados(df):
-    print("\nSincronizando feriados com a API...")
     anos_unicos = df['data'].dt.year.unique()
     lista_datas_feriados = []
 
@@ -46,7 +45,6 @@ def sincronizar_feriados(df):
 
     datas_feriados_oficiais = pd.to_datetime(lista_datas_feriados)
     df['e_feriado'] = df['data'].isin(datas_feriados_oficiais).astype(int)
-    print(f"{len(lista_datas_feriados)} feriados mapeados!")
     return df
 
 def remover_outliers(df, coluna):
@@ -69,7 +67,6 @@ def remover_outliers(df, coluna):
     
     # Print informativo para você saber quantos dados foram jogados fora
     outliers_removidos = len(df) - len(df_limpo)
-    print(f"Limpeza: {outliers_removidos} outliers removidos da coluna '{coluna}'.")
     
     return df_limpo
 
@@ -112,9 +109,57 @@ def importar_csv(caminho_csv):
     print("Importação concluída com sucesso!")
 
 def carregar_dados():
+
     conexao = sqlite3.connect(settings.DB_PATH)
     df = pd.read_sql_query("SELECT * FROM historico_vendas", conexao)
     conexao.close()
+    
     if not df.empty and 'data' in df.columns:
-            df['data'] = pd.to_datetime(df['data'])
+        df['data'] = pd.to_datetime(df['data'])
+        
+        # === A CORREÇÃO DOS 3 ZEROS ENTRA AQUI ===
+        if 'qtd' in df.columns:
+            df['qtd'] = df['qtd'] / 1000
+            
     return df
+
+
+def inserir_registros_historico(registros):
+    if not registros:
+        return {
+            "registros_inseridos": 0,
+            "duplicatas_removidas": 0
+        }
+
+    df = pd.DataFrame(registros)
+    required_cols = ['data', 'loja', 'cidade', 'produto', 'qtd']
+    missing = [col for col in required_cols if col not in df.columns]
+
+    if missing:
+        raise ValueError(f"Colunas obrigatórias faltando: {missing}")
+
+    df['data'] = pd.to_datetime(df['data'], errors='coerce')
+    df['qtd'] = pd.to_numeric(df['qtd'], errors='coerce')
+    df = df.dropna(subset=required_cols)
+
+    conexao = sqlite3.connect(settings.DB_PATH, timeout=10)
+    try:
+        df.to_sql('historico_vendas', conexao, if_exists='append', index=False)
+
+        df_final = pd.read_sql_query("SELECT * FROM historico_vendas", conexao)
+        df_final['data'] = pd.to_datetime(df_final['data'])
+
+        tamanho_antes = len(df_final)
+        df_final = df_final.drop_duplicates(subset=['data', 'loja', 'produto'], keep='last')
+        duplicatas_removidas = tamanho_antes - len(df_final)
+
+        if duplicatas_removidas > 0:
+            df_final.to_sql('historico_vendas', conexao, if_exists='replace', index=False)
+
+    finally:
+        conexao.close()
+
+    return {
+        "registros_inseridos": len(df),
+        "duplicatas_removidas": duplicatas_removidas
+    }

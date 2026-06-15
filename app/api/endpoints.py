@@ -1,8 +1,10 @@
 from numbers import Number
 
+from typing import List
 from services.context import construir_dados_completos
+from services.data_handler import inserir_registros_historico
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from models.schemas import PrevisaoInput, PrevisaoOutput
+from models.schemas import PrevisaoInput, PrevisaoOutput, HistoricoInput, ImportacaoOutput
 from ml.inference import modelo_preditor
 from ml.trainer import treinamento_automatico
 
@@ -18,6 +20,20 @@ def fazer_previsao(dados: PrevisaoInput):
     resultado = modelo_preditor.prever(dados_enriquecidos)
 
     return resultado
+
+@router.post("/historico/importar", response_model=ImportacaoOutput)
+def importar_historico(registros: List[HistoricoInput]):
+    try:
+        resultado = inserir_registros_historico([registro.dict() for registro in registros])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "status": 200,
+        "mensagem": "Dados do histórico importados com sucesso",
+        "registros_inseridos": resultado["registros_inseridos"],
+        "duplicatas_removidas": resultado["duplicatas_removidas"]
+    }
 
 def rotina_treinamento():
     try:

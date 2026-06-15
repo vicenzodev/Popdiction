@@ -41,12 +41,19 @@ class ModeloPrevisao:
             produtos_disponiveis = list(self.modelos.keys())
             raise ValueError(f"Produto '{produto}' não encontrado. Modelos disponíveis: {produtos_disponiveis}")
 
-        modelo_certo = self.modelos[produto]
+        # DESEMPACOTANDO O ARQUIVO SALVO
+        pacote = self.modelos[produto]
+        modelo_certo = pacote["modelo"]
+        mae_historico = pacote["mae"]
+        rmae_historico = pacote["rmae"]
+
         df_entrada = pd.DataFrame([dados_entrada])
         resultado = modelo_certo.predict(df_entrada)[0]
 
         return {
-            "qtd": round(resultado/100, 2)
+            "qtd": round(resultado, 2),
+            "mae": round(mae_historico, 2),
+            "rmae": round(rmae_historico, 2)
         }
 
 modelo_preditor = ModeloPrevisao()
