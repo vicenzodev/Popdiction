@@ -2,7 +2,7 @@ from numbers import Number
 
 from typing import List
 from services.context import construir_dados_completos
-from services.data_handler import inserir_registros_historico
+from services.data_handler import inserir_registros_historico, get_historico_produto
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from models.schemas import PrevisaoInput, PrevisaoOutput, HistoricoInput, ImportacaoOutput
 from ml.inference import modelo_preditor
@@ -54,3 +54,7 @@ def disparar_treinamento(background_tasks: BackgroundTasks):
         "status": 200,
         "mensagem": "O modelo começou a ser treinado"
     }
+
+@router.get("/historico/{nome_produto}")
+def obter_resumo_historico(nome_produto: str):
+    return get_historico_produto(nome_produto)

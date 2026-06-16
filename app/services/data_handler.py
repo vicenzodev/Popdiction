@@ -163,3 +163,41 @@ def inserir_registros_historico(registros):
         "registros_inseridos": len(df),
         "duplicatas_removidas": duplicatas_removidas
     }
+
+def get_historico_produto(nome_produto):
+    # Conecta ao seu banco SQLite
+    conn = sqlite3.connect("dados_processados.db")
+    cursor = conn.cursor()
+    
+    # Exemplo de query para agrupar as vendas das últimas 4 semanas por produto
+    # Você precisará ajustar os nomes das colunas de acordo com sua tabela historico_vendas
+    query = """
+        SELECT 
+            strftime('%W', data) as semana,
+            SUM(qtd) as total_qtd,
+        FROM historico_vendas
+        WHERE produto = ?
+        GROUP BY semana
+        ORDER BY MAX(data) DESC
+        LIMIT 4
+    """
+    try:
+        cursor.execute(query, (nome_produto,))
+        linhas = cursor.fetchall()
+    except Exception as e:
+        conn.close()
+        print(f"Erro ao executar query: {e}")
+    finally:
+        conn.close()
+
+    # Formata para o React (inverte a lista para o gráfico ficar na ordem cronológica correta)
+    resultado = [
+        {
+            "periodo": f"Semana {linha[0]}",
+            "produto": nome_produto,
+            "quantidade": linha[1]
+        }
+        for linha in reversed(linhas)
+    ]
+    
+    return resultado
